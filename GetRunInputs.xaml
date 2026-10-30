@@ -1,0 +1,190 @@
+<Activity mc:Ignorable="sap sap2010" x:Class="GetRunInputs" xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:s="clr-namespace:System;assembly=System.Private.CoreLib" xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation" xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation" xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib" xmlns:sco="clr-namespace:System.Collections.ObjectModel;assembly=System.Private.CoreLib" xmlns:ui="http://schemas.uipath.com/workflow/activities" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:Members>
+    <x:Property Name="out_AsOfDate" Type="OutArgument(s:DateTime)" />
+    <x:Property Name="out_SendFollowUps" Type="OutArgument(x:Boolean)" />
+    <x:Property Name="out_SenderEmail" Type="OutArgument(x:String)" />
+    <x:Property Name="out_AppPassword" Type="OutArgument(x:String)" />
+    <x:Property Name="out_CfoEmail" Type="OutArgument(x:String)" />
+    <x:Property Name="out_Success" Type="OutArgument(x:Boolean)" />
+  </x:Members>
+  <VisualBasic.Settings>
+    <x:Null />
+  </VisualBasic.Settings>
+  <sap2010:WorkflowViewState.IdRef>ActivityBuilder_1</sap2010:WorkflowViewState.IdRef>
+  <TextExpression.NamespacesForImplementation>
+    <sco:Collection x:TypeArguments="x:String">
+      <x:String>System.Activities</x:String>
+      <x:String>System.Activities.Statements</x:String>
+      <x:String>System.Activities.Expressions</x:String>
+      <x:String>System.Activities.Validation</x:String>
+      <x:String>System.Activities.XamlIntegration</x:String>
+      <x:String>Microsoft.VisualBasic</x:String>
+      <x:String>Microsoft.VisualBasic.Activities</x:String>
+      <x:String>System</x:String>
+      <x:String>System.Collections</x:String>
+      <x:String>System.Collections.Generic</x:String>
+      <x:String>System.Collections.ObjectModel</x:String>
+      <x:String>System.Data</x:String>
+      <x:String>System.Diagnostics</x:String>
+      <x:String>System.Drawing</x:String>
+      <x:String>System.IO</x:String>
+      <x:String>System.Linq</x:String>
+      <x:String>System.Net.Mail</x:String>
+      <x:String>System.Xml</x:String>
+      <x:String>System.Xml.Linq</x:String>
+      <x:String>UiPath.Core</x:String>
+      <x:String>UiPath.Core.Activities</x:String>
+      <x:String>System.Windows.Markup</x:String>
+      <x:String>GlobalVariablesNamespace</x:String>
+      <x:String>GlobalConstantsNamespace</x:String>
+    </sco:Collection>
+  </TextExpression.NamespacesForImplementation>
+  <TextExpression.ReferencesForImplementation>
+    <sco:Collection x:TypeArguments="AssemblyReference">
+      <AssemblyReference>System.Activities</AssemblyReference>
+      <AssemblyReference>Microsoft.VisualBasic</AssemblyReference>
+      <AssemblyReference>System.Private.CoreLib</AssemblyReference>
+      <AssemblyReference>mscorlib</AssemblyReference>
+      <AssemblyReference>System.Data</AssemblyReference>
+      <AssemblyReference>System</AssemblyReference>
+      <AssemblyReference>System.Linq</AssemblyReference>
+      <AssemblyReference>System.Data.Common</AssemblyReference>
+      <AssemblyReference>System.Drawing</AssemblyReference>
+      <AssemblyReference>System.Drawing.Primitives</AssemblyReference>
+      <AssemblyReference>System.Drawing.Common</AssemblyReference>
+      <AssemblyReference>System.Core</AssemblyReference>
+      <AssemblyReference>System.Xml</AssemblyReference>
+      <AssemblyReference>System.Xml.Linq</AssemblyReference>
+      <AssemblyReference>PresentationFramework</AssemblyReference>
+      <AssemblyReference>WindowsBase</AssemblyReference>
+      <AssemblyReference>PresentationCore</AssemblyReference>
+      <AssemblyReference>System.Xaml</AssemblyReference>
+      <AssemblyReference>UiPath.System.Activities</AssemblyReference>
+      <AssemblyReference>UiPath.UiAutomation.Activities</AssemblyReference>
+      <AssemblyReference>System.Data.DataSetExtensions</AssemblyReference>
+      <AssemblyReference>System.Net.Mail</AssemblyReference>
+      <AssemblyReference>System.ObjectModel</AssemblyReference>
+      <AssemblyReference>System.ComponentModel.TypeConverter</AssemblyReference>
+    </sco:Collection>
+  </TextExpression.ReferencesForImplementation>
+  <Sequence sap2010:Annotation.AnnotationText="Collects the run settings from the billing staff: the as-of date, the follow-up choice, the sender Gmail and its App Password. Nothing is hard-coded." DisplayName="Get Run Inputs" sap2010:WorkflowViewState.IdRef="Sequence_1">
+    <Sequence.Variables>
+      <Variable x:TypeArguments="x:String" Name="AsOfDateText" />
+      <Variable x:TypeArguments="x:Boolean" Default="False" Name="IsDateValid" />
+      <Variable x:TypeArguments="x:String" Name="FollowUpChoice" />
+    </Sequence.Variables>
+    <sap:WorkflowViewStateService.ViewState>
+      <scg:Dictionary x:TypeArguments="x:String, x:Object">
+        <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+      </scg:Dictionary>
+    </sap:WorkflowViewStateService.ViewState>
+    <Assign sap2010:Annotation.AnnotationText="Start with out_Success = False. It only becomes True after every input is collected." DisplayName="Assume Inputs Failed" sap2010:WorkflowViewState.IdRef="Assign_1">
+      <Assign.To>
+        <OutArgument x:TypeArguments="x:Boolean">[out_Success]</OutArgument>
+      </Assign.To>
+      <Assign.Value>
+        <InArgument x:TypeArguments="x:Boolean">[False]</InArgument>
+      </Assign.Value>
+    </Assign>
+    <TryCatch sap2010:Annotation.AnnotationText="Input Dialog throws an error when the user clicks Cancel. The Catch shows a message instead of crashing the robot." DisplayName="Try Collect Inputs" sap2010:WorkflowViewState.IdRef="TryCatch_1">
+      <TryCatch.Try>
+        <Sequence DisplayName="Try" sap2010:WorkflowViewState.IdRef="Sequence_2">
+          <ui:InterruptibleWhile CurrentIndex="{x:Null}" sap2010:Annotation.AnnotationText="Keeps asking until the user types a real date." Condition="[Not IsDateValid]" DisplayName="While Date Is Not Valid" sap2010:WorkflowViewState.IdRef="InterruptibleWhile_1">
+            <ui:InterruptibleWhile.Body>
+              <Sequence DisplayName="Body" sap2010:WorkflowViewState.IdRef="Sequence_3">
+                <ui:InputDialog Options="{x:Null}" OptionsString="{x:Null}" sap2010:Annotation.AnnotationText="Text Box Input Dialog. This date is used for every due-date and overdue check in the run." DisplayName="Ask As-Of Date" sap2010:WorkflowViewState.IdRef="InputDialog_1" IsPassword="False" Label="Enter the 'as of' date (example: 10/30/2026):" Title="As-Of Date" TopMost="False">
+                  <ui:InputDialog.Result>
+                    <OutArgument x:TypeArguments="x:String">[AsOfDateText]</OutArgument>
+                  </ui:InputDialog.Result>
+                </ui:InputDialog>
+                <If sap2010:Annotation.AnnotationText="IsDate checks that the typed text can be read as a date." Condition="[IsDate(AsOfDateText)]" DisplayName="If Date Is Valid" sap2010:WorkflowViewState.IdRef="If_1">
+                  <If.Then>
+                    <Sequence DisplayName="Then" sap2010:WorkflowViewState.IdRef="Sequence_4">
+                      <ui:MultipleAssign sap2010:Annotation.AnnotationText="Converts the text to a date with CDate and marks the date as valid so the loop stops." DisplayName="Save As-Of Date" sap2010:WorkflowViewState.IdRef="MultipleAssign_1">
+                        <ui:MultipleAssign.AssignOperations>
+                          <scg:List x:TypeArguments="ui:AssignOperation" Capacity="4">
+                            <ui:AssignOperation sap2010:WorkflowViewState.IdRef="AssignOperation_1">
+                              <ui:AssignOperation.To>
+                                <OutArgument x:TypeArguments="s:DateTime">[out_AsOfDate]</OutArgument>
+                              </ui:AssignOperation.To>
+                              <ui:AssignOperation.Value>
+                                <InArgument x:TypeArguments="s:DateTime">[CDate(AsOfDateText)]</InArgument>
+                              </ui:AssignOperation.Value>
+                            </ui:AssignOperation>
+                            <ui:AssignOperation sap2010:WorkflowViewState.IdRef="AssignOperation_2">
+                              <ui:AssignOperation.To>
+                                <OutArgument x:TypeArguments="x:Boolean">[IsDateValid]</OutArgument>
+                              </ui:AssignOperation.To>
+                              <ui:AssignOperation.Value>
+                                <InArgument x:TypeArguments="x:Boolean">[True]</InArgument>
+                              </ui:AssignOperation.Value>
+                            </ui:AssignOperation>
+                          </scg:List>
+                        </ui:MultipleAssign.AssignOperations>
+                      </ui:MultipleAssign>
+                    </Sequence>
+                  </If.Then>
+                  <If.Else>
+                    <Sequence DisplayName="Else" sap2010:WorkflowViewState.IdRef="Sequence_5">
+                      <ui:MessageBox ChosenButton="{x:Null}" sap2010:Annotation.AnnotationText="Tells the user the date was not accepted, then the While loop asks again." AutoCloseAfter="00:00:00" Buttons="Ok" Caption="Invalid Date" DisplayName="Show Invalid Date Message" sap2010:WorkflowViewState.IdRef="MessageBox_1" Text="[&quot;That is not a valid date. Please try again.&quot;]" />
+                    </Sequence>
+                  </If.Else>
+                </If>
+              </Sequence>
+            </ui:InterruptibleWhile.Body>
+          </ui:InterruptibleWhile>
+          <ui:InputDialog OptionsString="{x:Null}" sap2010:Annotation.AnnotationText="Multiple Choice Input Dialog, asked once for the whole run: send reminders to clients who were already emailed, or skip them." DisplayName="Ask Follow-Up Choice" sap2010:WorkflowViewState.IdRef="InputDialog_2" IsPassword="False" Label="Send follow-up reminders to clients already emailed?" Options="[New String() {&quot;Yes&quot;, &quot;Skip&quot;}]" Title="Follow-Up Reminders" TopMost="False">
+            <ui:InputDialog.Result>
+              <OutArgument x:TypeArguments="x:String">[FollowUpChoice]</OutArgument>
+            </ui:InputDialog.Result>
+          </ui:InputDialog>
+          <Assign sap2010:Annotation.AnnotationText="True when the user chose Yes, False when the user chose Skip." DisplayName="Set Send Follow-Ups" sap2010:WorkflowViewState.IdRef="Assign_2">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:Boolean">[out_SendFollowUps]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:Boolean">[FollowUpChoice = "Yes"]</InArgument>
+            </Assign.Value>
+          </Assign>
+          <ui:InputDialog Options="{x:Null}" OptionsString="{x:Null}" sap2010:Annotation.AnnotationText="Text Box Input Dialog for the Gmail account that sends the emails. Asked at runtime so no address is stored in the project." DisplayName="Ask Sender Gmail" sap2010:WorkflowViewState.IdRef="InputDialog_3" IsPassword="False" Label="Enter the Gmail address that will send the emails:" Title="Sender Gmail" TopMost="False">
+            <ui:InputDialog.Result>
+              <OutArgument x:TypeArguments="x:String">[out_SenderEmail]</OutArgument>
+            </ui:InputDialog.Result>
+          </ui:InputDialog>
+          <ui:InputDialog Options="{x:Null}" OptionsString="{x:Null}" sap2010:Annotation.AnnotationText="Password Input Dialog (the typed text is masked). The App Password is never saved in the project." DisplayName="Ask Gmail App Password" sap2010:WorkflowViewState.IdRef="InputDialog_4" IsPassword="True" Label="Enter the Gmail App Password:" Title="Gmail App Password" TopMost="False">
+            <ui:InputDialog.Result>
+              <OutArgument x:TypeArguments="x:String">[out_AppPassword]</OutArgument>
+            </ui:InputDialog.Result>
+          </ui:InputDialog>
+          <ui:InputDialog Options="{x:Null}" OptionsString="{x:Null}" sap2010:Annotation.AnnotationText="Text Box Input Dialog for the Finance Head/CFO email address that receives the summary email at the end of the run." DisplayName="Ask CFO Email" sap2010:WorkflowViewState.IdRef="InputDialog_5" IsPassword="False" Label="Enter the Finance Head/CFO email address (receives the summary email):" Title="Finance Head / CFO Email" TopMost="False">
+            <ui:InputDialog.Result>
+              <OutArgument x:TypeArguments="x:String">[out_CfoEmail]</OutArgument>
+            </ui:InputDialog.Result>
+          </ui:InputDialog>
+          <WriteLine sap2010:Annotation.AnnotationText="Prints the collected settings to the Output panel. The password is left out on purpose." DisplayName="Write Inputs Summary" sap2010:WorkflowViewState.IdRef="WriteLine_1" Text="[&quot;As-of date: &quot; &amp; out_AsOfDate.ToString(&quot;MMMM dd, yyyy&quot;) &amp; &quot; | Follow-ups: &quot; &amp; FollowUpChoice &amp; &quot; | Sender: &quot; &amp; out_SenderEmail &amp; &quot; | CFO: &quot; &amp; out_CfoEmail]" />
+          <Assign sap2010:Annotation.AnnotationText="Every input was collected, so Main can continue to the next step." DisplayName="Mark Inputs Collected" sap2010:WorkflowViewState.IdRef="Assign_3">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:Boolean">[out_Success]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:Boolean">[True]</InArgument>
+            </Assign.Value>
+          </Assign>
+        </Sequence>
+      </TryCatch.Try>
+      <TryCatch.Catches>
+        <Catch x:TypeArguments="s:Exception" sap2010:WorkflowViewState.IdRef="Catch`1_1">
+          <ActivityAction x:TypeArguments="s:Exception">
+            <ActivityAction.Argument>
+              <DelegateInArgument x:TypeArguments="s:Exception" Name="exception" />
+            </ActivityAction.Argument>
+            <Sequence DisplayName="Catch" sap2010:WorkflowViewState.IdRef="Sequence_6">
+              <WriteLine sap2010:Annotation.AnnotationText="Prints the technical error to the Output panel for troubleshooting." DisplayName="Write Input Error" sap2010:WorkflowViewState.IdRef="WriteLine_2" Text="[&quot;Input error: &quot; &amp; exception.Message]" />
+              <ui:MessageBox ChosenButton="{x:Null}" sap2010:Annotation.AnnotationText="Friendly message shown when the user cancels a dialog. out_Success stays False so Main ends the run." AutoCloseAfter="00:00:00" Buttons="Ok" Caption="Inputs Cancelled" DisplayName="Show Inputs Cancelled Message" sap2010:WorkflowViewState.IdRef="MessageBox_2" Text="[&quot;The run inputs were cancelled, so the automation will stop.&quot;]" />
+            </Sequence>
+          </ActivityAction>
+        </Catch>
+      </TryCatch.Catches>
+    </TryCatch>
+  </Sequence>
+</Activity>

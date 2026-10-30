@@ -1,0 +1,140 @@
+<Activity mc:Ignorable="sap sap2010" x:Class="SaveProcessedWorkbook" mva:VisualBasic.Settings="{x:Null}"
+xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+xmlns:mva="clr-namespace:Microsoft.VisualBasic.Activities;assembly=System.Activities"
+xmlns:s="clr-namespace:System;assembly=System.Private.CoreLib"
+xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+xmlns:sco="clr-namespace:System.Collections.ObjectModel;assembly=mscorlib"
+xmlns:sd="clr-namespace:System.Data;assembly=System.Data.Common"
+xmlns:ui="http://schemas.uipath.com/workflow/activities"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <x:Members>
+        <x:Property Name="in_BillingTable" Type="InArgument(sd:DataTable)" />
+        <x:Property Name="in_OutputPath" Type="InArgument(x:String)" />
+        <x:Property Name="out_Success" Type="OutArgument(x:Boolean)" />
+    </x:Members>
+    <TextExpression.NamespacesForImplementation>
+        <sco:Collection x:TypeArguments="x:String">
+            <x:String>System.Activities</x:String>
+            <x:String>System.Activities.Statements</x:String>
+            <x:String>System.Activities.Expressions</x:String>
+            <x:String>System.Activities.Validation</x:String>
+            <x:String>System.Activities.XamlIntegration</x:String>
+            <x:String>Microsoft.VisualBasic</x:String>
+            <x:String>Microsoft.VisualBasic.Activities</x:String>
+            <x:String>System</x:String>
+            <x:String>System.Collections</x:String>
+            <x:String>System.Collections.Generic</x:String>
+            <x:String>System.Collections.ObjectModel</x:String>
+            <x:String>System.Data</x:String>
+            <x:String>System.Diagnostics</x:String>
+            <x:String>System.Drawing</x:String>
+            <x:String>System.IO</x:String>
+            <x:String>System.Linq</x:String>
+            <x:String>System.Net.Mail</x:String>
+            <x:String>System.Xml</x:String>
+            <x:String>System.Xml.Linq</x:String>
+            <x:String>UiPath.Core</x:String>
+            <x:String>UiPath.Core.Activities</x:String>
+            <x:String>System.Windows.Markup</x:String>
+        </sco:Collection>
+    </TextExpression.NamespacesForImplementation>
+    <TextExpression.ReferencesForImplementation>
+        <sco:Collection x:TypeArguments="AssemblyReference">
+            <AssemblyReference>System.Activities</AssemblyReference>
+            <AssemblyReference>Microsoft.VisualBasic</AssemblyReference>
+            <AssemblyReference>System.Private.CoreLib</AssemblyReference>
+            <AssemblyReference>mscorlib</AssemblyReference>
+            <AssemblyReference>System.Data</AssemblyReference>
+            <AssemblyReference>System</AssemblyReference>
+            <AssemblyReference>System.Linq</AssemblyReference>
+            <AssemblyReference>System.Data.Common</AssemblyReference>
+            <AssemblyReference>System.Drawing</AssemblyReference>
+            <AssemblyReference>System.Drawing.Primitives</AssemblyReference>
+            <AssemblyReference>System.Drawing.Common</AssemblyReference>
+            <AssemblyReference>System.Core</AssemblyReference>
+            <AssemblyReference>System.Xml</AssemblyReference>
+            <AssemblyReference>System.Xml.Linq</AssemblyReference>
+            <AssemblyReference>PresentationFramework</AssemblyReference>
+            <AssemblyReference>WindowsBase</AssemblyReference>
+            <AssemblyReference>PresentationCore</AssemblyReference>
+            <AssemblyReference>System.Xaml</AssemblyReference>
+            <AssemblyReference>UiPath.System.Activities</AssemblyReference>
+            <AssemblyReference>UiPath.UiAutomation.Activities</AssemblyReference>
+            <AssemblyReference>UiPath.Excel.Activities</AssemblyReference>
+            <AssemblyReference>System.Data.DataSetExtensions</AssemblyReference>
+            <AssemblyReference>System.Net.Mail</AssemblyReference>
+        </sco:Collection>
+    </TextExpression.ReferencesForImplementation>
+    <Sequence DisplayName="Save Processed Workbook" sap2010:Annotation.AnnotationText="Saves the processed billing table (with the computed amounts, statuses and email tracking columns) into a new workbook, on a sheet called Processed. This workbook is attached to the summary email." sap2010:WorkflowViewState.IdRef="Sequence_1">
+        <Assign DisplayName="Assume Save Failed" sap2010:Annotation.AnnotationText="Start with out_Success = False. It only becomes True after the workbook is written." sap2010:WorkflowViewState.IdRef="Assign_1">
+            <Assign.To>
+                <OutArgument x:TypeArguments="x:Boolean">
+                    <VisualBasicReference x:TypeArguments="x:Boolean" ExpressionText="out_Success" />
+                </OutArgument>
+            </Assign.To>
+            <Assign.Value>
+                <InArgument x:TypeArguments="x:Boolean">
+                    <VisualBasicValue x:TypeArguments="x:Boolean" ExpressionText="False" />
+                </InArgument>
+            </Assign.Value>
+        </Assign>
+        <TryCatch DisplayName="Try Save Workbook" sap2010:Annotation.AnnotationText="If the workbook cannot be written (for example it is open in Excel), the Catch shows a message and out_Success stays False." sap2010:WorkflowViewState.IdRef="TryCatch_1">
+            <TryCatch.Try>
+                <Sequence DisplayName="Try" sap2010:WorkflowViewState.IdRef="Sequence_2">
+                    <ui:ExcelApplicationScope DisplayName="Open Processed Workbook" sap2010:Annotation.AnnotationText="Classic Excel Application Scope. Opens the file at in_OutputPath. If the file does not exist yet, it is created." WorkbookPath="[in_OutputPath]" sap2010:WorkflowViewState.IdRef="ExcelApplicationScope_1">
+                        <ui:ExcelApplicationScope.Body>
+                            <ActivityAction x:TypeArguments="ui:WorkbookApplication">
+                                <ActivityAction.Argument>
+                                    <DelegateInArgument x:TypeArguments="ui:WorkbookApplication" Name="ExcelWorkbookScope" />
+                                </ActivityAction.Argument>
+                                <Sequence DisplayName="Do" sap2010:WorkflowViewState.IdRef="Sequence_3">
+                                    <ui:ExcelWriteRange DisplayName="Write Processed Billing Sheet" sap2010:Annotation.AnnotationText="Write Range writes the whole billing table, with its column names, to the Processed sheet starting at cell A1." SheetName="Processed" StartingCell="A1" AddHeaders="True" DataTable="[in_BillingTable]" sap2010:WorkflowViewState.IdRef="ExcelWriteRange_1" />
+                                </Sequence>
+                            </ActivityAction>
+                        </ui:ExcelApplicationScope.Body>
+                    </ui:ExcelApplicationScope>
+                    <WriteLine DisplayName="Write Save Result" sap2010:Annotation.AnnotationText="Prints where the workbook was saved." sap2010:WorkflowViewState.IdRef="WriteLine_1">
+                        <WriteLine.Text>
+                            <InArgument x:TypeArguments="x:String">
+                                <VisualBasicValue x:TypeArguments="x:String" ExpressionText="&quot;Processed workbook saved: &quot; &amp; in_OutputPath &amp; &quot; (&quot; &amp; in_BillingTable.Rows.Count.ToString &amp; &quot; rows)&quot;" />
+                            </InArgument>
+                        </WriteLine.Text>
+                    </WriteLine>
+                    <Assign DisplayName="Mark Save Succeeded" sap2010:Annotation.AnnotationText="The workbook was written, so Main can continue to the summary email." sap2010:WorkflowViewState.IdRef="Assign_2">
+                        <Assign.To>
+                            <OutArgument x:TypeArguments="x:Boolean">
+                                <VisualBasicReference x:TypeArguments="x:Boolean" ExpressionText="out_Success" />
+                            </OutArgument>
+                        </Assign.To>
+                        <Assign.Value>
+                            <InArgument x:TypeArguments="x:Boolean">
+                                <VisualBasicValue x:TypeArguments="x:Boolean" ExpressionText="True" />
+                            </InArgument>
+                        </Assign.Value>
+                    </Assign>
+                </Sequence>
+            </TryCatch.Try>
+            <TryCatch.Catches>
+                <Catch x:TypeArguments="s:Exception">
+                    <ActivityAction x:TypeArguments="s:Exception">
+                        <ActivityAction.Argument>
+                            <DelegateInArgument x:TypeArguments="s:Exception" Name="exception" />
+                        </ActivityAction.Argument>
+                        <Sequence DisplayName="Catch" sap2010:WorkflowViewState.IdRef="Sequence_4">
+                            <WriteLine DisplayName="Write Save Error" sap2010:Annotation.AnnotationText="Prints the technical error to the Output panel." sap2010:WorkflowViewState.IdRef="WriteLine_2">
+                                <WriteLine.Text>
+                                    <InArgument x:TypeArguments="x:String">
+                                        <VisualBasicValue x:TypeArguments="x:String" ExpressionText="&quot;Save workbook error: &quot; &amp; exception.Message" />
+                                    </InArgument>
+                                </WriteLine.Text>
+                            </WriteLine>
+                            <ui:MessageBox Caption="Processed Workbook" Text="The processed workbook could not be saved. Close it if it is open in Excel and run again." Buttons="Ok" DisplayName="Show Save Failed Message" sap2010:Annotation.AnnotationText="Friendly message shown when the file cannot be written." sap2010:WorkflowViewState.IdRef="MessageBox_1" />
+                        </Sequence>
+                    </ActivityAction>
+                </Catch>
+            </TryCatch.Catches>
+        </TryCatch>
+    </Sequence>
+</Activity>

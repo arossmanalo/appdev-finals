@@ -1,0 +1,903 @@
+<Activity mc:Ignorable="sap sap2010" x:Class="ProcessInvoices" mva:VisualBasic.Settings="{x:Null}"
+xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+xmlns:mva="clr-namespace:Microsoft.VisualBasic.Activities;assembly=System.Activities"
+xmlns:s="clr-namespace:System;assembly=System.Private.CoreLib"
+xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+xmlns:sc="clr-namespace:System.Collections;assembly=System.Private.CoreLib"
+xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib"
+xmlns:sco="clr-namespace:System.Collections.ObjectModel;assembly=mscorlib"
+xmlns:sd="clr-namespace:System.Data;assembly=System.Data.Common"
+xmlns:ui="http://schemas.uipath.com/workflow/activities"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <x:Members>
+        <x:Property Name="io_BillingTable" Type="InOutArgument(sd:DataTable)" />
+        <x:Property Name="in_AsOfDate" Type="InArgument(s:DateTime)" />
+        <x:Property Name="in_SendFollowUps" Type="InArgument(x:Boolean)" />
+        <x:Property Name="in_ContactsTable" Type="InArgument(sd:DataTable)" />
+        <x:Property Name="in_PolicyText" Type="InArgument(x:String)" />
+        <x:Property Name="in_SenderEmail" Type="InArgument(x:String)" />
+        <x:Property Name="in_AppPassword" Type="InArgument(x:String)" />
+        <x:Property Name="out_EmailsSentCount" Type="OutArgument(x:Int32)" />
+        <x:Property Name="out_EmailsFailedCount" Type="OutArgument(x:Int32)" />
+        <x:Property Name="out_ProcessedCount" Type="OutArgument(x:Int32)" />
+        <x:Property Name="out_PaidCount" Type="OutArgument(x:Int32)" />
+        <x:Property Name="out_PartialCount" Type="OutArgument(x:Int32)" />
+        <x:Property Name="out_UnpaidCount" Type="OutArgument(x:Int32)" />
+        <x:Property Name="out_OverdueCount" Type="OutArgument(x:Int32)" />
+        <x:Property Name="out_InvalidCount" Type="OutArgument(x:Int32)" />
+        <x:Property Name="out_SkippedCount" Type="OutArgument(x:Int32)" />
+        <x:Property Name="out_TotalBilled" Type="OutArgument(x:Double)" />
+        <x:Property Name="out_TotalPaid" Type="OutArgument(x:Double)" />
+        <x:Property Name="out_TotalBalance" Type="OutArgument(x:Double)" />
+    </x:Members>
+    <TextExpression.NamespacesForImplementation>
+        <sco:Collection x:TypeArguments="x:String">
+            <x:String>System.Activities</x:String>
+            <x:String>System.Activities.Statements</x:String>
+            <x:String>System.Activities.Expressions</x:String>
+            <x:String>System.Activities.Validation</x:String>
+            <x:String>System.Activities.XamlIntegration</x:String>
+            <x:String>Microsoft.VisualBasic</x:String>
+            <x:String>Microsoft.VisualBasic.Activities</x:String>
+            <x:String>System</x:String>
+            <x:String>System.Collections</x:String>
+            <x:String>System.Collections.Generic</x:String>
+            <x:String>System.Collections.ObjectModel</x:String>
+            <x:String>System.Data</x:String>
+            <x:String>System.Diagnostics</x:String>
+            <x:String>System.Drawing</x:String>
+            <x:String>System.IO</x:String>
+            <x:String>System.Linq</x:String>
+            <x:String>System.Net.Mail</x:String>
+            <x:String>System.Xml</x:String>
+            <x:String>System.Xml.Linq</x:String>
+            <x:String>UiPath.Core</x:String>
+            <x:String>UiPath.Core.Activities</x:String>
+            <x:String>System.Windows.Markup</x:String>
+        </sco:Collection>
+    </TextExpression.NamespacesForImplementation>
+    <TextExpression.ReferencesForImplementation>
+        <sco:Collection x:TypeArguments="AssemblyReference">
+            <AssemblyReference>System.Activities</AssemblyReference>
+            <AssemblyReference>Microsoft.VisualBasic</AssemblyReference>
+            <AssemblyReference>System.Private.CoreLib</AssemblyReference>
+            <AssemblyReference>mscorlib</AssemblyReference>
+            <AssemblyReference>System.Data</AssemblyReference>
+            <AssemblyReference>System</AssemblyReference>
+            <AssemblyReference>System.Linq</AssemblyReference>
+            <AssemblyReference>System.Data.Common</AssemblyReference>
+            <AssemblyReference>System.Drawing</AssemblyReference>
+            <AssemblyReference>System.Drawing.Primitives</AssemblyReference>
+            <AssemblyReference>System.Drawing.Common</AssemblyReference>
+            <AssemblyReference>System.Core</AssemblyReference>
+            <AssemblyReference>System.Xml</AssemblyReference>
+            <AssemblyReference>System.Xml.Linq</AssemblyReference>
+            <AssemblyReference>PresentationFramework</AssemblyReference>
+            <AssemblyReference>WindowsBase</AssemblyReference>
+            <AssemblyReference>PresentationCore</AssemblyReference>
+            <AssemblyReference>System.Xaml</AssemblyReference>
+            <AssemblyReference>UiPath.System.Activities</AssemblyReference>
+            <AssemblyReference>UiPath.UiAutomation.Activities</AssemblyReference>
+            <AssemblyReference>System.Data.DataSetExtensions</AssemblyReference>
+            <AssemblyReference>System.Net.Mail</AssemblyReference>
+        </sco:Collection>
+    </TextExpression.ReferencesForImplementation>
+    <Sequence DisplayName="Process Invoices" sap2010:Annotation.AnnotationText="Goes through every invoice row. For each row it checks the data, computes gross, VAT, total billed, due date and balance, decides the status (Paid, Partially Paid, Unpaid, Overdue or Invalid), and writes the results back into the table. It also counts the results for the summary email." sap2010:WorkflowViewState.IdRef="Sequence_1">
+        <ui:MultipleAssign DisplayName="Reset Counters and Totals" sap2010:Annotation.AnnotationText="Sets every counter and total to 0 before the loop starts." sap2010:WorkflowViewState.IdRef="MultipleAssign_1">
+            <ui:MultipleAssign.AssignOperations>
+                <scg:List x:TypeArguments="ui:AssignOperation" Capacity="16">
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Int32">
+                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_ProcessedCount" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Int32">
+                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Int32">
+                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_PaidCount" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Int32">
+                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Int32">
+                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_PartialCount" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Int32">
+                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Int32">
+                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_UnpaidCount" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Int32">
+                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Int32">
+                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_OverdueCount" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Int32">
+                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Int32">
+                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_InvalidCount" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Int32">
+                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Int32">
+                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_SkippedCount" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Int32">
+                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Double">
+                                <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="out_TotalBilled" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Double">
+                                <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Double">
+                                <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="out_TotalPaid" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Double">
+                                <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Double">
+                                <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="out_TotalBalance" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Double">
+                                <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Int32">
+                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_EmailsSentCount" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Int32">
+                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                    <ui:AssignOperation>
+                        <ui:AssignOperation.To>
+                            <OutArgument x:TypeArguments="x:Int32">
+                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_EmailsFailedCount" />
+                            </OutArgument>
+                        </ui:AssignOperation.To>
+                        <ui:AssignOperation.Value>
+                            <InArgument x:TypeArguments="x:Int32">
+                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="0" />
+                            </InArgument>
+                        </ui:AssignOperation.Value>
+                    </ui:AssignOperation>
+                </scg:List>
+            </ui:MultipleAssign.AssignOperations>
+        </ui:MultipleAssign>
+        <ui:ForEach x:TypeArguments="sd:DataRow" DisplayName="For Each Invoice Row" sap2010:Annotation.AnnotationText="For Each over the billing table rows (TypeArgument System.Data.DataRow). The current invoice is called row, and cells are read with row(&quot;Column Name&quot;).ToString." sap2010:WorkflowViewState.IdRef="ForEach`1_1">
+            <ui:ForEach.Values>
+                <InArgument x:TypeArguments="sc:IEnumerable">
+                    <VisualBasicValue x:TypeArguments="sc:IEnumerable" ExpressionText="io_BillingTable.Rows" />
+                </InArgument>
+            </ui:ForEach.Values>
+            <ui:ForEach.Body>
+                <ActivityAction x:TypeArguments="sd:DataRow">
+                    <ActivityAction.Argument>
+                        <DelegateInArgument x:TypeArguments="sd:DataRow" Name="row" />
+                    </ActivityAction.Argument>
+                    <Sequence DisplayName="Body" sap2010:WorkflowViewState.IdRef="Sequence_2">
+                        <Sequence.Variables>
+                            <Variable x:TypeArguments="x:Boolean" Name="IsEmailed" />
+                            <Variable x:TypeArguments="x:Boolean" Name="IsValid" />
+                            <Variable x:TypeArguments="x:Double" Name="ParcelsValue" />
+                            <Variable x:TypeArguments="x:Double" Name="RateValue" />
+                            <Variable x:TypeArguments="x:Int32" Name="TermsValue" />
+                            <Variable x:TypeArguments="s:DateTime" Name="InvoiceDateValue" />
+                            <Variable x:TypeArguments="x:Double" Name="PaidValue" />
+                            <Variable x:TypeArguments="x:Double" Name="GrossAmount" />
+                            <Variable x:TypeArguments="x:Double" Name="VatAmount" />
+                            <Variable x:TypeArguments="x:Double" Name="TotalAmount" />
+                            <Variable x:TypeArguments="s:DateTime" Name="DueDateValue" />
+                            <Variable x:TypeArguments="x:Double" Name="BalanceAmount" />
+                            <Variable x:TypeArguments="x:String" Name="StatusText" />
+                            <Variable x:TypeArguments="x:String" Name="EmailAction" />
+                            <Variable x:TypeArguments="x:Boolean" Name="EmailSent" />
+                        </Sequence.Variables>
+                        <Assign DisplayName="Check If Already Emailed" sap2010:Annotation.AnnotationText="A row was emailed before when its Email Status cell is not blank." sap2010:WorkflowViewState.IdRef="Assign_1">
+                            <Assign.To>
+                                <OutArgument x:TypeArguments="x:Boolean">
+                                    <VisualBasicReference x:TypeArguments="x:Boolean" ExpressionText="IsEmailed" />
+                                </OutArgument>
+                            </Assign.To>
+                            <Assign.Value>
+                                <InArgument x:TypeArguments="x:Boolean">
+                                    <VisualBasicValue x:TypeArguments="x:Boolean" ExpressionText="Not String.IsNullOrWhiteSpace(row(&quot;Email Status&quot;).ToString)" />
+                                </InArgument>
+                            </Assign.Value>
+                        </Assign>
+                        <If DisplayName="If Skip Already Emailed Row" sap2010:Annotation.AnnotationText="Business rule: a row that was already emailed is skipped unless the user chose Yes for follow-up reminders." sap2010:WorkflowViewState.IdRef="If_1">
+                            <If.Condition>
+                                <InArgument x:TypeArguments="x:Boolean">
+                                    <VisualBasicValue x:TypeArguments="x:Boolean" ExpressionText="IsEmailed AndAlso Not in_SendFollowUps" />
+                                </InArgument>
+                            </If.Condition>
+                            <If.Then>
+                                <Sequence DisplayName="Then" sap2010:WorkflowViewState.IdRef="Sequence_3">
+                                    <Assign DisplayName="Count Skipped Row" sap2010:WorkflowViewState.IdRef="Assign_2">
+                                        <Assign.To>
+                                            <OutArgument x:TypeArguments="x:Int32">
+                                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_SkippedCount" />
+                                            </OutArgument>
+                                        </Assign.To>
+                                        <Assign.Value>
+                                            <InArgument x:TypeArguments="x:Int32">
+                                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_SkippedCount + 1" />
+                                            </InArgument>
+                                        </Assign.Value>
+                                    </Assign>
+                                    <WriteLine DisplayName="Write Skipped Row" sap2010:WorkflowViewState.IdRef="WriteLine_1">
+                                        <WriteLine.Text>
+                                            <InArgument x:TypeArguments="x:String">
+                                                <VisualBasicValue x:TypeArguments="x:String" ExpressionText="row(&quot;Invoice ID&quot;).ToString &amp; &quot;: skipped (already emailed)&quot;" />
+                                            </InArgument>
+                                        </WriteLine.Text>
+                                    </WriteLine>
+                                </Sequence>
+                            </If.Then>
+                            <If.Else>
+                                <Sequence DisplayName="Else" sap2010:WorkflowViewState.IdRef="Sequence_4">
+                                    <TryCatch DisplayName="Try Process Row" sap2010:Annotation.AnnotationText="If anything unexpected goes wrong with one row (for example text where a number should be), that row is marked Invalid and the run continues with the next row." sap2010:WorkflowViewState.IdRef="TryCatch_1">
+                                        <TryCatch.Try>
+                                            <Sequence DisplayName="Try" sap2010:WorkflowViewState.IdRef="Sequence_5">
+                                                <Assign DisplayName="Check Row Data" sap2010:Annotation.AnnotationText="Bad data rule: Parcels and Rate must be numbers and Invoice Date must be a date. IsNumeric and IsDate return False for blank cells." sap2010:WorkflowViewState.IdRef="Assign_3">
+                                                    <Assign.To>
+                                                        <OutArgument x:TypeArguments="x:Boolean">
+                                                            <VisualBasicReference x:TypeArguments="x:Boolean" ExpressionText="IsValid" />
+                                                        </OutArgument>
+                                                    </Assign.To>
+                                                    <Assign.Value>
+                                                        <InArgument x:TypeArguments="x:Boolean">
+                                                            <VisualBasicValue x:TypeArguments="x:Boolean" ExpressionText="IsNumeric(row(&quot;Parcels&quot;).ToString) AndAlso IsNumeric(row(&quot;Rate&quot;).ToString) AndAlso IsDate(row(&quot;Invoice Date&quot;).ToString)" />
+                                                        </InArgument>
+                                                    </Assign.Value>
+                                                </Assign>
+                                                <If DisplayName="If Row Data Is Bad" sap2010:WorkflowViewState.IdRef="If_2">
+                                                    <If.Condition>
+                                                        <InArgument x:TypeArguments="x:Boolean">
+                                                            <VisualBasicValue x:TypeArguments="x:Boolean" ExpressionText="Not IsValid" />
+                                                        </InArgument>
+                                                    </If.Condition>
+                                                    <If.Then>
+                                                        <Sequence DisplayName="Then" sap2010:WorkflowViewState.IdRef="Sequence_6">
+                                                            <ui:MultipleAssign DisplayName="Mark Row Invalid" sap2010:Annotation.AnnotationText="Writes Invalid in the Status cell and counts the row. No email is sent for it." sap2010:WorkflowViewState.IdRef="MultipleAssign_2">
+                                                                <ui:MultipleAssign.AssignOperations>
+                                                                    <scg:List x:TypeArguments="ui:AssignOperation" Capacity="4">
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Status&quot;)" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="&quot;Invalid&quot;" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Int32">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_InvalidCount" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Int32">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_InvalidCount + 1" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                    </scg:List>
+                                                                </ui:MultipleAssign.AssignOperations>
+                                                            </ui:MultipleAssign>
+                                                            <WriteLine DisplayName="Write Invalid Row" sap2010:WorkflowViewState.IdRef="WriteLine_2">
+                                                                <WriteLine.Text>
+                                                                    <InArgument x:TypeArguments="x:String">
+                                                                        <VisualBasicValue x:TypeArguments="x:String" ExpressionText="row(&quot;Invoice ID&quot;).ToString &amp; &quot;: Invalid (bad Parcels, Rate or Invoice Date)&quot;" />
+                                                                    </InArgument>
+                                                                </WriteLine.Text>
+                                                            </WriteLine>
+                                                        </Sequence>
+                                                    </If.Then>
+                                                    <If.Else>
+                                                        <Sequence DisplayName="Else" sap2010:WorkflowViewState.IdRef="Sequence_7">
+                                                            <ui:MultipleAssign DisplayName="Read Row Values" sap2010:Annotation.AnnotationText="Converts the cell text into numbers and a date with CDbl, CInt and CDate. A blank Amount Paid is treated as 0 (this applies only to Amount Paid)." sap2010:WorkflowViewState.IdRef="MultipleAssign_3">
+                                                                <ui:MultipleAssign.AssignOperations>
+                                                                    <scg:List x:TypeArguments="ui:AssignOperation" Capacity="8">
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="ParcelsValue" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="CDbl(row(&quot;Parcels&quot;).ToString)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="RateValue" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="CDbl(row(&quot;Rate&quot;).ToString)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Int32">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="TermsValue" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Int32">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="CInt(row(&quot;Payment Terms (Days)&quot;).ToString)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="s:DateTime">
+                                                                                    <VisualBasicReference x:TypeArguments="s:DateTime" ExpressionText="InvoiceDateValue" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="s:DateTime">
+                                                                                    <VisualBasicValue x:TypeArguments="s:DateTime" ExpressionText="CDate(row(&quot;Invoice Date&quot;).ToString)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="PaidValue" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="If(String.IsNullOrWhiteSpace(row(&quot;Amount Paid&quot;).ToString), 0.0, CDbl(row(&quot;Amount Paid&quot;).ToString))" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                    </scg:List>
+                                                                </ui:MultipleAssign.AssignOperations>
+                                                            </ui:MultipleAssign>
+                                                            <ui:MultipleAssign DisplayName="Compute Billing Amounts" sap2010:Annotation.AnnotationText="gross = parcels x rate. VAT = 12% of gross. total billed = gross + VAT. due date = invoice date + payment terms. balance = total billed - amount paid. Money is rounded to 2 decimals with Math.Round." sap2010:WorkflowViewState.IdRef="MultipleAssign_4">
+                                                                <ui:MultipleAssign.AssignOperations>
+                                                                    <scg:List x:TypeArguments="ui:AssignOperation" Capacity="8">
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="GrossAmount" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="Math.Round(ParcelsValue * RateValue, 2)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="VatAmount" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="Math.Round(GrossAmount * 0.12, 2)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="TotalAmount" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="Math.Round(GrossAmount + VatAmount, 2)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="s:DateTime">
+                                                                                    <VisualBasicReference x:TypeArguments="s:DateTime" ExpressionText="DueDateValue" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="s:DateTime">
+                                                                                    <VisualBasicValue x:TypeArguments="s:DateTime" ExpressionText="InvoiceDateValue.AddDays(TermsValue)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="BalanceAmount" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="Math.Round(TotalAmount - PaidValue, 2)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                    </scg:List>
+                                                                </ui:MultipleAssign.AssignOperations>
+                                                            </ui:MultipleAssign>
+                                                            <Assign DisplayName="Decide Status" sap2010:Annotation.AnnotationText="Paid when the balance is 0 or less. Overdue when the due date is before the as-of date and a balance remains. Partially Paid when something was paid but not all. Otherwise Unpaid." sap2010:WorkflowViewState.IdRef="Assign_4">
+                                                                <Assign.To>
+                                                                    <OutArgument x:TypeArguments="x:String">
+                                                                        <VisualBasicReference x:TypeArguments="x:String" ExpressionText="StatusText" />
+                                                                    </OutArgument>
+                                                                </Assign.To>
+                                                                <Assign.Value>
+                                                                    <InArgument x:TypeArguments="x:String">
+                                                                        <VisualBasicValue x:TypeArguments="x:String" ExpressionText="If(BalanceAmount &lt;= 0, &quot;Paid&quot;, If(DueDateValue.Date &lt; in_AsOfDate.Date, &quot;Overdue&quot;, If(PaidValue &gt; 0, &quot;Partially Paid&quot;, &quot;Unpaid&quot;)))" />
+                                                                    </InArgument>
+                                                                </Assign.Value>
+                                                            </Assign>
+                                                            <Assign DisplayName="Decide Email Type" sap2010:Annotation.AnnotationText="Paid: no email. Already emailed: follow-up reminder. Overdue: overdue reminder. Everything else: billing statement. The emails themselves are added in the next step." sap2010:WorkflowViewState.IdRef="Assign_5">
+                                                                <Assign.To>
+                                                                    <OutArgument x:TypeArguments="x:String">
+                                                                        <VisualBasicReference x:TypeArguments="x:String" ExpressionText="EmailAction" />
+                                                                    </OutArgument>
+                                                                </Assign.To>
+                                                                <Assign.Value>
+                                                                    <InArgument x:TypeArguments="x:String">
+                                                                        <VisualBasicValue x:TypeArguments="x:String" ExpressionText="If(StatusText = &quot;Paid&quot;, &quot;No email&quot;, If(IsEmailed, &quot;Follow-up reminder&quot;, If(StatusText = &quot;Overdue&quot;, &quot;Overdue reminder&quot;, &quot;Billing statement&quot;)))" />
+                                                                    </InArgument>
+                                                                </Assign.Value>
+                                                            </Assign>
+                                                            <ui:MultipleAssign DisplayName="Write Results To Row" sap2010:Annotation.AnnotationText="Writes the computed values back into the row's own cells. They are saved to Excel later by Write Range." sap2010:WorkflowViewState.IdRef="MultipleAssign_5">
+                                                                <ui:MultipleAssign.AssignOperations>
+                                                                    <scg:List x:TypeArguments="ui:AssignOperation" Capacity="8">
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Gross&quot;)" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="GrossAmount" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;VAT&quot;)" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="VatAmount" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Total Billed&quot;)" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="TotalAmount" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Due Date&quot;)" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="DueDateValue" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Balance&quot;)" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="BalanceAmount" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Status&quot;)" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Object">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="StatusText" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                    </scg:List>
+                                                                </ui:MultipleAssign.AssignOperations>
+                                                            </ui:MultipleAssign>
+                                                            <ui:MultipleAssign DisplayName="Add To Totals" sap2010:Annotation.AnnotationText="Adds this invoice to the run totals used by the summary email." sap2010:WorkflowViewState.IdRef="MultipleAssign_6">
+                                                                <ui:MultipleAssign.AssignOperations>
+                                                                    <scg:List x:TypeArguments="ui:AssignOperation" Capacity="8">
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Int32">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_ProcessedCount" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Int32">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_ProcessedCount + 1" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="out_TotalBilled" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="Math.Round(out_TotalBilled + TotalAmount, 2)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="out_TotalPaid" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="Math.Round(out_TotalPaid + PaidValue, 2)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                        <ui:AssignOperation>
+                                                                            <ui:AssignOperation.To>
+                                                                                <OutArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicReference x:TypeArguments="x:Double" ExpressionText="out_TotalBalance" />
+                                                                                </OutArgument>
+                                                                            </ui:AssignOperation.To>
+                                                                            <ui:AssignOperation.Value>
+                                                                                <InArgument x:TypeArguments="x:Double">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Double" ExpressionText="Math.Round(out_TotalBalance + BalanceAmount, 2)" />
+                                                                                </InArgument>
+                                                                            </ui:AssignOperation.Value>
+                                                                        </ui:AssignOperation>
+                                                                    </scg:List>
+                                                                </ui:MultipleAssign.AssignOperations>
+                                                            </ui:MultipleAssign>
+                                                            <Switch x:TypeArguments="x:String" DisplayName="Switch On Status" sap2010:Annotation.AnnotationText="Counts the invoice under its status. The Switch TypeArgument is String." sap2010:WorkflowViewState.IdRef="Switch`1_1">
+                                                                <Switch.Expression>
+                                                                    <InArgument x:TypeArguments="x:String">
+                                                                        <VisualBasicValue x:TypeArguments="x:String" ExpressionText="StatusText" />
+                                                                    </InArgument>
+                                                                </Switch.Expression>
+                                                                <Sequence x:Key="Paid" DisplayName="Paid" sap2010:WorkflowViewState.IdRef="Sequence_8">
+                                                                    <Assign DisplayName="Count Paid" sap2010:WorkflowViewState.IdRef="Assign_6">
+                                                                        <Assign.To>
+                                                                            <OutArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_PaidCount" />
+                                                                            </OutArgument>
+                                                                        </Assign.To>
+                                                                        <Assign.Value>
+                                                                            <InArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_PaidCount + 1" />
+                                                                            </InArgument>
+                                                                        </Assign.Value>
+                                                                    </Assign>
+                                                                </Sequence>
+                                                                <Sequence x:Key="Partially Paid" DisplayName="Partially Paid" sap2010:WorkflowViewState.IdRef="Sequence_9">
+                                                                    <Assign DisplayName="Count Partially Paid" sap2010:WorkflowViewState.IdRef="Assign_7">
+                                                                        <Assign.To>
+                                                                            <OutArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_PartialCount" />
+                                                                            </OutArgument>
+                                                                        </Assign.To>
+                                                                        <Assign.Value>
+                                                                            <InArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_PartialCount + 1" />
+                                                                            </InArgument>
+                                                                        </Assign.Value>
+                                                                    </Assign>
+                                                                </Sequence>
+                                                                <Sequence x:Key="Unpaid" DisplayName="Unpaid" sap2010:WorkflowViewState.IdRef="Sequence_10">
+                                                                    <Assign DisplayName="Count Unpaid" sap2010:WorkflowViewState.IdRef="Assign_8">
+                                                                        <Assign.To>
+                                                                            <OutArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_UnpaidCount" />
+                                                                            </OutArgument>
+                                                                        </Assign.To>
+                                                                        <Assign.Value>
+                                                                            <InArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_UnpaidCount + 1" />
+                                                                            </InArgument>
+                                                                        </Assign.Value>
+                                                                    </Assign>
+                                                                </Sequence>
+                                                                <Sequence x:Key="Overdue" DisplayName="Overdue" sap2010:WorkflowViewState.IdRef="Sequence_11">
+                                                                    <Assign DisplayName="Count Overdue" sap2010:WorkflowViewState.IdRef="Assign_9">
+                                                                        <Assign.To>
+                                                                            <OutArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_OverdueCount" />
+                                                                            </OutArgument>
+                                                                        </Assign.To>
+                                                                        <Assign.Value>
+                                                                            <InArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_OverdueCount + 1" />
+                                                                            </InArgument>
+                                                                        </Assign.Value>
+                                                                    </Assign>
+                                                                </Sequence>
+                                                            </Switch>
+                                                            <If DisplayName="If Email Is Needed" sap2010:Annotation.AnnotationText="Every status except Paid gets an email. The email type was chosen in Decide Email Type." sap2010:WorkflowViewState.IdRef="If_3">
+                                                                <If.Condition>
+                                                                    <InArgument x:TypeArguments="x:Boolean">
+                                                                        <VisualBasicValue x:TypeArguments="x:Boolean" ExpressionText="EmailAction &lt;&gt; &quot;No email&quot;" />
+                                                                    </InArgument>
+                                                                </If.Condition>
+                                                                <If.Then>
+                                                                    <Sequence DisplayName="Then" sap2010:WorkflowViewState.IdRef="Sequence_13">
+                                                                        <ui:InvokeWorkflowFile DisplayName="Send Client Email" sap2010:Annotation.AnnotationText="Calls SendClientEmail.xaml for this invoice. It returns EmailSent = True when Gmail accepted the message." WorkflowFileName="SendClientEmail.xaml" sap2010:WorkflowViewState.IdRef="InvokeWorkflowFile_1">
+                                                                            <ui:InvokeWorkflowFile.Arguments>
+                                                                                <InArgument x:TypeArguments="sd:DataTable" x:Key="in_ContactsTable">[in_ContactsTable]</InArgument>
+                                                                                <InArgument x:TypeArguments="x:String" x:Key="in_ClientId">[row("Client ID").ToString]</InArgument>
+                                                                                <InArgument x:TypeArguments="x:String" x:Key="in_EmailType">[EmailAction]</InArgument>
+                                                                                <InArgument x:TypeArguments="x:String" x:Key="in_InvoiceId">[row("Invoice ID").ToString]</InArgument>
+                                                                                <InArgument x:TypeArguments="x:Double" x:Key="in_TotalAmount">[TotalAmount]</InArgument>
+                                                                                <InArgument x:TypeArguments="x:Double" x:Key="in_PaidAmount">[PaidValue]</InArgument>
+                                                                                <InArgument x:TypeArguments="x:Double" x:Key="in_BalanceAmount">[BalanceAmount]</InArgument>
+                                                                                <InArgument x:TypeArguments="s:DateTime" x:Key="in_DueDate">[DueDateValue]</InArgument>
+                                                                                <InArgument x:TypeArguments="s:DateTime" x:Key="in_AsOfDate">[in_AsOfDate]</InArgument>
+                                                                                <InArgument x:TypeArguments="x:String" x:Key="in_PolicyText">[in_PolicyText]</InArgument>
+                                                                                <InArgument x:TypeArguments="x:String" x:Key="in_SenderEmail">[in_SenderEmail]</InArgument>
+                                                                                <InArgument x:TypeArguments="x:String" x:Key="in_AppPassword">[in_AppPassword]</InArgument>
+                                                                                <OutArgument x:TypeArguments="x:Boolean" x:Key="out_EmailSent">[EmailSent]</OutArgument>
+                                                                            </ui:InvokeWorkflowFile.Arguments>
+                                                                        </ui:InvokeWorkflowFile>
+                                                                        <If DisplayName="If Email Was Sent" sap2010:Annotation.AnnotationText="Only a successful send updates the tracking columns. A failed send leaves the row as it was, so the next run tries again." sap2010:WorkflowViewState.IdRef="If_4">
+                                                                            <If.Condition>
+                                                                                <InArgument x:TypeArguments="x:Boolean">
+                                                                                    <VisualBasicValue x:TypeArguments="x:Boolean" ExpressionText="EmailSent" />
+                                                                                </InArgument>
+                                                                            </If.Condition>
+                                                                            <If.Then>
+                                                                                <Sequence DisplayName="Then" sap2010:WorkflowViewState.IdRef="Sequence_14">
+                                                                                    <ui:MultipleAssign DisplayName="Update Email Tracking Columns" sap2010:Annotation.AnnotationText="Email Status becomes Sent. Follow-up Count is 0 for a first email and goes up by 1 for each follow-up. Last Reminder Date is set to the as-of date for overdue and follow-up reminders." sap2010:WorkflowViewState.IdRef="MultipleAssign_8">
+                                                                                        <ui:MultipleAssign.AssignOperations>
+                                                                                            <scg:List x:TypeArguments="ui:AssignOperation" Capacity="8">
+                                                                                                <ui:AssignOperation>
+                                                                                                    <ui:AssignOperation.To>
+                                                                                                        <OutArgument x:TypeArguments="x:Object">
+                                                                                                            <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Follow-up Count&quot;)" />
+                                                                                                        </OutArgument>
+                                                                                                    </ui:AssignOperation.To>
+                                                                                                    <ui:AssignOperation.Value>
+                                                                                                        <InArgument x:TypeArguments="x:Object">
+                                                                                                            <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="If(IsEmailed, If(IsNumeric(row(&quot;Follow-up Count&quot;).ToString), CInt(row(&quot;Follow-up Count&quot;).ToString), 0) + 1, 0)" />
+                                                                                                        </InArgument>
+                                                                                                    </ui:AssignOperation.Value>
+                                                                                                </ui:AssignOperation>
+                                                                                                <ui:AssignOperation>
+                                                                                                    <ui:AssignOperation.To>
+                                                                                                        <OutArgument x:TypeArguments="x:Object">
+                                                                                                            <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Last Reminder Date&quot;)" />
+                                                                                                        </OutArgument>
+                                                                                                    </ui:AssignOperation.To>
+                                                                                                    <ui:AssignOperation.Value>
+                                                                                                        <InArgument x:TypeArguments="x:Object">
+                                                                                                            <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="If(EmailAction = &quot;Billing statement&quot;, row(&quot;Last Reminder Date&quot;), CObj(in_AsOfDate))" />
+                                                                                                        </InArgument>
+                                                                                                    </ui:AssignOperation.Value>
+                                                                                                </ui:AssignOperation>
+                                                                                                <ui:AssignOperation>
+                                                                                                    <ui:AssignOperation.To>
+                                                                                                        <OutArgument x:TypeArguments="x:Object">
+                                                                                                            <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Email Status&quot;)" />
+                                                                                                        </OutArgument>
+                                                                                                    </ui:AssignOperation.To>
+                                                                                                    <ui:AssignOperation.Value>
+                                                                                                        <InArgument x:TypeArguments="x:Object">
+                                                                                                            <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="&quot;Sent&quot;" />
+                                                                                                        </InArgument>
+                                                                                                    </ui:AssignOperation.Value>
+                                                                                                </ui:AssignOperation>
+                                                                                                <ui:AssignOperation>
+                                                                                                    <ui:AssignOperation.To>
+                                                                                                        <OutArgument x:TypeArguments="x:Int32">
+                                                                                                            <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_EmailsSentCount" />
+                                                                                                        </OutArgument>
+                                                                                                    </ui:AssignOperation.To>
+                                                                                                    <ui:AssignOperation.Value>
+                                                                                                        <InArgument x:TypeArguments="x:Int32">
+                                                                                                            <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_EmailsSentCount + 1" />
+                                                                                                        </InArgument>
+                                                                                                    </ui:AssignOperation.Value>
+                                                                                                </ui:AssignOperation>
+                                                                                            </scg:List>
+                                                                                        </ui:MultipleAssign.AssignOperations>
+                                                                                    </ui:MultipleAssign>
+                                                                                </Sequence>
+                                                                            </If.Then>
+                                                                            <If.Else>
+                                                                                <Sequence DisplayName="Else" sap2010:WorkflowViewState.IdRef="Sequence_15">
+                                                                                    <Assign DisplayName="Count Failed Email" sap2010:WorkflowViewState.IdRef="Assign_10">
+                                                                                        <Assign.To>
+                                                                                            <OutArgument x:TypeArguments="x:Int32">
+                                                                                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_EmailsFailedCount" />
+                                                                                            </OutArgument>
+                                                                                        </Assign.To>
+                                                                                        <Assign.Value>
+                                                                                            <InArgument x:TypeArguments="x:Int32">
+                                                                                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_EmailsFailedCount + 1" />
+                                                                                            </InArgument>
+                                                                                        </Assign.Value>
+                                                                                    </Assign>
+                                                                                </Sequence>
+                                                                            </If.Else>
+                                                                        </If>
+                                                                    </Sequence>
+                                                                </If.Then>
+                                                            </If>
+                                                            <WriteLine DisplayName="Write Row Result" sap2010:Annotation.AnnotationText="Prints one line per invoice: its status, balance and which email it will get." sap2010:WorkflowViewState.IdRef="WriteLine_3">
+                                                                <WriteLine.Text>
+                                                                    <InArgument x:TypeArguments="x:String">
+                                                                        <VisualBasicValue x:TypeArguments="x:String" ExpressionText="row(&quot;Invoice ID&quot;).ToString &amp; &quot;: &quot; &amp; StatusText &amp; &quot; | Total &quot; &amp; TotalAmount.ToString(&quot;N2&quot;) &amp; &quot; | Paid &quot; &amp; PaidValue.ToString(&quot;N2&quot;) &amp; &quot; | Balance &quot; &amp; BalanceAmount.ToString(&quot;N2&quot;) &amp; &quot; | Due &quot; &amp; DueDateValue.ToString(&quot;MMMM dd, yyyy&quot;) &amp; &quot; | &quot; &amp; EmailAction" />
+                                                                    </InArgument>
+                                                                </WriteLine.Text>
+                                                            </WriteLine>
+                                                        </Sequence>
+                                                    </If.Else>
+                                                </If>
+                                            </Sequence>
+                                        </TryCatch.Try>
+                                        <TryCatch.Catches>
+                                            <Catch x:TypeArguments="s:Exception">
+                                                <ActivityAction x:TypeArguments="s:Exception">
+                                                    <ActivityAction.Argument>
+                                                        <DelegateInArgument x:TypeArguments="s:Exception" Name="exception" />
+                                                    </ActivityAction.Argument>
+                                                    <Sequence DisplayName="Catch" sap2010:WorkflowViewState.IdRef="Sequence_12">
+                                                        <ui:MultipleAssign DisplayName="Mark Row Invalid After Error" sap2010:Annotation.AnnotationText="Safety net: an unexpected error on one row marks only that row Invalid." sap2010:WorkflowViewState.IdRef="MultipleAssign_7">
+                                                            <ui:MultipleAssign.AssignOperations>
+                                                                <scg:List x:TypeArguments="ui:AssignOperation" Capacity="4">
+                                                                    <ui:AssignOperation>
+                                                                        <ui:AssignOperation.To>
+                                                                            <OutArgument x:TypeArguments="x:Object">
+                                                                                <VisualBasicReference x:TypeArguments="x:Object" ExpressionText="row(&quot;Status&quot;)" />
+                                                                            </OutArgument>
+                                                                        </ui:AssignOperation.To>
+                                                                        <ui:AssignOperation.Value>
+                                                                            <InArgument x:TypeArguments="x:Object">
+                                                                                <VisualBasicValue x:TypeArguments="x:Object" ExpressionText="&quot;Invalid&quot;" />
+                                                                            </InArgument>
+                                                                        </ui:AssignOperation.Value>
+                                                                    </ui:AssignOperation>
+                                                                    <ui:AssignOperation>
+                                                                        <ui:AssignOperation.To>
+                                                                            <OutArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicReference x:TypeArguments="x:Int32" ExpressionText="out_InvalidCount" />
+                                                                            </OutArgument>
+                                                                        </ui:AssignOperation.To>
+                                                                        <ui:AssignOperation.Value>
+                                                                            <InArgument x:TypeArguments="x:Int32">
+                                                                                <VisualBasicValue x:TypeArguments="x:Int32" ExpressionText="out_InvalidCount + 1" />
+                                                                            </InArgument>
+                                                                        </ui:AssignOperation.Value>
+                                                                    </ui:AssignOperation>
+                                                                </scg:List>
+                                                            </ui:MultipleAssign.AssignOperations>
+                                                        </ui:MultipleAssign>
+                                                        <WriteLine DisplayName="Write Row Error" sap2010:WorkflowViewState.IdRef="WriteLine_4">
+                                                            <WriteLine.Text>
+                                                                <InArgument x:TypeArguments="x:String">
+                                                                    <VisualBasicValue x:TypeArguments="x:String" ExpressionText="row(&quot;Invoice ID&quot;).ToString &amp; &quot;: Invalid - &quot; &amp; exception.Message" />
+                                                                </InArgument>
+                                                            </WriteLine.Text>
+                                                        </WriteLine>
+                                                    </Sequence>
+                                                </ActivityAction>
+                                            </Catch>
+                                        </TryCatch.Catches>
+                                    </TryCatch>
+                                </Sequence>
+                            </If.Else>
+                        </If>
+                    </Sequence>
+                </ActivityAction>
+            </ui:ForEach.Body>
+        </ui:ForEach>
+    </Sequence>
+</Activity>
